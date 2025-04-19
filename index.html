@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simon Game</title>
+    <style>
+        :root {
+            --oxford-blue: #002147;
+            --orange-web: #FFA500;
+            --platinum: #E5E4E2;
+            --black: #000000;
+            --white: #FFFFFF;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--platinum);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--black);
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border: 2.5px solid var(--black);
+            cursor: pointer;
+            opacity: 0.7;
+        }
+        
+        .btn:active, .btn.active {
+            opacity: 1;
+        }
+        
+        #green {
+            background-color: green;
+            border-radius: 100% 0 0 0;
+            top: 0;
+            left: 0;
+        }
+        
+        #red {
+            background-color: red;
+            border-radius: 0 100% 0 0;
+            top: 0;
+            right: 0;
+        }
+        
+        #yellow {
+            background-color: var(--orange-web);
+            border-radius: 0 0 0 100%;
+            bottom: 0;
+            left: 0;
+        }
+        
+        #blue {
+            background-color: blue;
+            border-radius: 0 0 100% 0;
+            bottom: 0;
+            right: 0;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: var(--black);
+            color: var(--white);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color:var(--black);
+        }
+        
+        .score-display {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .strict-mode {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+         /* Footer */
+         footer {
+            background-color: var(--platinum);
+            padding: 10px 0;
+            text-align: center;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: var(--orange-web);
+        }
+
+        .footer p{
+            color: var(--oxford-blue);
+        }
+    </style>
+</head>
+<body>
+    <h1>Simon Game</h1>
+    
+    <div class="game-container">
+        <div class="btn" id="green"></div>
+        <div class="btn" id="red"></div>
+        <div class="btn" id="yellow"></div>
+        <div class="btn" id="blue"></div>
+    </div>
+    
+    <div class="score-display">Score: <span id="score">0</span></div>
+    
+    <div class="controls">
+        <button id="startBtn">Start Game</button>
+        <div class="strict-mode">
+            <input type="checkbox" id="strictCheckbox">
+            <label for="strictCheckbox">Strict Mode</label>
+        </div>
+    </div>
+     <!-- Footer -->
+     <footer>
+        <div class="container">
+            <p class="footer-text">&copy; 2025 Deepak Raj. All Rights Reserved.</p>
+            <p>Designed & Built with ❤️ by Deepak Raj</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const greenBtn = document.getElementById('green');
+            const redBtn = document.getElementById('red');
+            const yellowBtn = document.getElementById('yellow');
+            const blueBtn = document.getElementById('blue');
+            const startBtn = document.getElementById('startBtn');
+            const strictCheckbox = document.getElementById('strictCheckbox');
+            const scoreDisplay = document.getElementById('score');
+            
+            // Game state
+            let sequence = [];
+            let playerSequence = [];
+            let score = 0;
+            let isPlaying = false;
+            let isPlayerTurn = false;
+            let strictMode = false;
+            
+            // Sound functions
+            function playSound(color) {
+                const sounds = {
+                    green: 392,
+                    red: 329.63,
+                    yellow: 261.63,
+                    blue: 196
+                };
+                
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = sounds[color];
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            }
+            
+            // Button click handlers
+            function handleButtonClick(color) {
+                if (!isPlaying || !isPlayerTurn) return;
+                
+                // Visual feedback
+                const button = document.getElementById(color);
+                button.classList.add('active');
+                playSound(color);
+                
+                setTimeout(() => {
+                    button.classList.remove('active');
+                }, 300);
+                
+                // Add to player sequence and check
+                playerSequence.push(color);
+                
+                if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
+                    // Wrong sequence
+                    playSound('red');
+                    if (strictMode) {
+                        endGame();
+                    } else {
+                        setTimeout(() => {
+                            alert('Wrong sequence! Try again.');
+                            playerSequence = [];
+                            playSequence();
+                        }, 500);
+                    }
+                } else if (playerSequence.length === sequence.length) {
+                    // Correct sequence
+                    score++;
+                    scoreDisplay.textContent = score;
+                    
+                    if (score === 20) {
+                        setTimeout(() => {
+                            alert('Congratulations! You won!');
+                            endGame();
+                        }, 500);
+                    } else {
+                        setTimeout(() => {
+                            nextRound();
+                        }, 1000);
+                    }
+                }
+            }
+            
+            greenBtn.addEventListener('click', () => handleButtonClick('green'));
+            redBtn.addEventListener('click', () => handleButtonClick('red'));
+            yellowBtn.addEventListener('click', () => handleButtonClick('yellow'));
+            blueBtn.addEventListener('click', () => handleButtonClick('blue'));
+            
+            // Game functions
+            function startGame() {
+                sequence = [];
+                playerSequence = [];
+                score = 0;
+                scoreDisplay.textContent = score;
+                isPlaying = true;
+                strictMode = strictCheckbox.checked;
+                nextRound();
+            }
+            
+            function endGame() {
+                isPlaying = false;
+                isPlayerTurn = false;
+                sequence = [];
+                playerSequence = [];
+                score = 0;
+                scoreDisplay.textContent = score;
+            }
+            
+            function nextRound() {
+                playerSequence = [];
+                isPlayerTurn = false;
+                
+                // Add a random color to the sequence
+                const colors = ['green', 'red', 'yellow', 'blue'];
+                sequence.push(colors[Math.floor(Math.random() * 4)]);
+                
+                // Play the sequence
+                playSequence();
+            }
+            
+            function playSequence() {
+                let i = 0;
+                const interval = setInterval(() => {
+                    if (i >= sequence.length) {
+                        clearInterval(interval);
+                        isPlayerTurn = true;
+                        return;
+                    }
+                    
+                    const color = sequence[i];
+                    const button = document.getElementById(color);
+                    
+                    button.classList.add('active');
+                    playSound(color);
+                    
+                    setTimeout(() => {
+                        button.classList.remove('active');
+                    }, 300);
+                    
+                    i++;
+                }, 600);
+            }
+            
+            // Start button
+            startBtn.addEventListener('click', () => {
+                if (!isPlaying) {
+                    startGame();
+                } else {
+                    endGame();
+                    startBtn.textContent = 'Start Game';
+                }
+            });
+            
+            // Strict mode toggle
+            strictCheckbox.addEventListener('change', () => {
+                strictMode = strictCheckbox.checked;
+            });
+        });
+    </script>
+</body>
+</html>
